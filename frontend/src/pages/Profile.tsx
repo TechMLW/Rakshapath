@@ -18,7 +18,7 @@ export default function Profile() {
 
   const [contacts, setContacts] = useState<EmergencyContact[]>([
     { id: "1", name: "Mom", relation: "Primary Trusted Contact", phone: "+91 98765 43210", isPrimary: true },
-    { id: "2", name: "Rahul Sharma", relation: "Brother / Emergency Contact", phone: "+91 98765 43211" }
+    { id: "2", name: "Dad", relation: "Primary Trusted Contact", phone: "+91 98765 43211" }
   ]);
 
   const [newContactModal, setNewContactModal] = useState(false);
