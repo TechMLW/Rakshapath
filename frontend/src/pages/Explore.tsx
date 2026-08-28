@@ -178,7 +178,7 @@ export default function Explore() {
           <button className="map-icon" aria-label="Notifications" title="Notifications">
             <Bell size={18} />
           </button>
-          <div className="map-avatar">PS</div>
+          <div className="map-avatar">SA</div>
         </div>
       </header>
 

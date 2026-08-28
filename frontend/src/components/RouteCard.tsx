@@ -1,5 +1,6 @@
 import { Clock3, Gauge, IndianRupee, ShieldCheck, Zap } from "lucide-react";
 import type { RouteOption } from "../types/api";
+import { colorForRoute } from "./MapView";
 
 function formatMinutes(seconds?: number): string {
   if (seconds == null) return "—";
@@ -39,6 +40,11 @@ export function RouteCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
+            <span
+              className="h-2.5 w-2.5 rounded-full shrink-0"
+              style={{ backgroundColor: colorForRoute(route) }}
+              aria-hidden="true"
+            />
             <span className="font-bold text-slate-900">{route.label}</span>
             {route.isRecommended && (
               <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-bold text-emerald-800">

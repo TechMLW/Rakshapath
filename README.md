@@ -1,289 +1,267 @@
-# Raksha-Path (AI-Rakshak)
-### AI-Powered Intelligent Route Optimization & Community Safety Platform
+# RakshaPath
 
-**Smart India Hackathon (SIH 2026)**  
-A unified, production-grade geospatial routing, hazard prediction, and community safety platform built for multi-region scalability across India.
+**AI-Powered Intelligent Route Optimization & Community Safety Platform**
+Smart India Hackathon 2026
 
----
+## 1. Overview
 
-## 📌 Table of Contents
-1. [Project Overview](#-project-overview)
-2. [Key Features](#-key-features)
-3. [System Architecture](#-system-architecture)
-4. [Consolidated Project Structure](#-consolidated-project-structure)
-5. [Installation & Setup](#-installation--setup)
-   - [Linux / macOS Setup](#linux--macos-setup)
-   - [Windows Setup](#windows-setup)
-6. [Running the Project](#-running-the-project)
-7. [Running Tests & Benchmarks](#-running-tests--benchmarks)
-8. [API Endpoints Reference](#-api-endpoints-reference)
-9. [Team Member Responsibilities](#-team-member-responsibilities)
-10. [Future Scope](#-future-scope)
+RakshaPath computes safety-aware routes over a real road network (OpenStreetMap, via OSMnx/NetworkX) using A* pathfinding with pluggable cost profiles, augmented by community-reported hazards and ML risk models. A FastAPI backend exposes the routing/AI/community-reporting functionality; a React + TypeScript + Vite frontend (Google-Maps-style UI) consumes it.
 
----
+This README describes the **final, consolidated** project — one backend, one frontend, no duplicates.
 
-## 🚀 Project Overview
+## 2. Problem Statement
 
-**Raksha-Path** is an intelligent navigation and community safety platform designed to provide multi-objective routing that prioritizes commuter safety, flood resilience, accident avoidance, and dynamic hazard rerouting. Unlike traditional navigation engines that only optimize for travel time or distance, Raksha-Path integrates live machine learning risk predictions, community-reported incident verification, and dynamic edge-weighted pathfinding over real-world OpenStreetMap road networks.
+Standard navigation apps optimize for time or distance only. Commuters — especially in cities with variable street lighting, flood risk, and inconsistent policing — need routes that can be optimized for *safety*, not just speed, and that can react to live hazard reports (waterlogging, blockages, poor lighting) rather than a static map.
 
----
+## 3. Key Features
 
-## ✨ Key Features
+- Real A* routing over an actual OSM road graph (not simulated)
+- Three route profiles: **Fastest**, **Safest**, **Balanced** — each a distinct edge-cost function, not a UI relabeling of the same path
+- Dynamic rerouting endpoint that recomputes a route under an adjusted cost model
+- Community incident reporting (hazards, accidents, lighting, **Lost & Found**) backed by PostGIS geospatial queries
+- Real place-name geocoding (OpenStreetMap Nominatim) — the route planner is not limited to a fixed preset list
+- ML risk-prediction modules for accidents/flooding/congestion (`src/ml/`, `src/ai/`)
+- Honest degraded-state handling: when the database or a data source is unavailable, the UI says so — it does not fabricate a safety score or an empty-but-successful response
 
-- **Multi-Objective Graph Routing**: A* and Dijkstra pathfinding with dynamic edge weighting supporting **Fastest**, **Safest**, and **Balanced** route profiles.
-- **Dynamic In-Transit Rerouting**: Automatic detection of emerging route hazards (floods, accidents, congestion) and cost-threshold-triggered alternative route computation.
-- **Multi-Region Scalability**: Support for 10 initial regions (Bhubaneswar, Assam, Meghalaya, Arunachal Pradesh, Nagaland, Manipur, Mizoram, Tripura, Sikkim, and North-East Combined) with automatic caching and Lazy Graph Loading.
-- **AI Hazard Prediction Models**: Trained Random Forest classifiers for flood probability, traffic congestion forecasting, and accident likelihood.
-- **Community Incident Verification**: Automated heuristic and reputation-weighted verification for user-reported road incidents.
-- **Frontend Map Compatibility**: Direct RFC 7946 GeoJSON LineString and Leaflet/OSM polyline formatting with styled feature collections.
-- **Enterprise REST API**: FastAPI backend with JWT authentication, PostGIS spatial queries, and admin dashboard statistics.
+## 4. System Architecture
 
----
-
-## 🏛 System Architecture
-
-```mermaid
-graph TD
-    Client["Client App / Web Frontend (Leaflet / OSM)"] --> API["FastAPI Gateway (src/backend/main.py)"]
-    
-    subgraph "Core Backend Layer (src/backend)"
-        API --> Auth["auth.py (JWT & RBAC)"]
-        API --> Reports["reports.py (Community Incidents)"]
-        API --> RoutesEndpoint["routes.py (/routes/optimize, /routes/reroute)"]
-        API --> Admin["admin.py (Management & Stats)"]
-        RoutesEndpoint --> RouteBridge["route_service.py"]
-    end
-
-    subgraph "Routing & Optimization Engine (src/routing)"
-        RouteBridge --> RoutingService["routing_service.py (Singleton Graph Cache)"]
-        RoutingService --> RouteRanker["route_ranker.py"]
-        RoutingService --> RerouteEngine["rerouting.py"]
-        RouteRanker --> AStar["astar.py (Heuristic Pathfinding)"]
-        RouteRanker --> EdgeWeights["edge_weights.py (Dynamic Cost Modifiers)"]
-        RouteRanker --> Analytics["route_analytics.py"]
-        RoutingService --> FrontendExport["frontend_export.py (RFC 7946 GeoJSON)"]
-    end
-
-    subgraph "Scalable Graph Management (src/graph)"
-        AStar --> GraphBuilder["graph_builder.py"]
-        GraphBuilder --> GraphConfig["config.py (10 Region Definitions)"]
-        GraphBuilder --> GraphStorage["data/graphs/*.graphml"]
-    end
-
-    subgraph "AI & Machine Learning (src/ai & src/ml)"
-        EdgeWeights -.-> SafetyScore["safety_score.py"]
-        EdgeWeights -.-> IncidentPredict["incident_prediction.py"]
-        IncidentPredict --> MLModels["src/ml/*.pkl (Random Forest Classifiers)"]
-    end
+```
+Frontend (React/Vite)  →  FastAPI backend  →  Routing Service (A*, NetworkX graph)
+                                            →  PostgreSQL + PostGIS (reports, users)
+                                            →  ML models (src/ai, src/ml) for risk scoring
 ```
 
----
+The frontend never computes a route itself — it sends origin/destination coordinates to the backend and renders whatever the backend's A* implementation returns.
 
-## 📁 Consolidated Project Structure
+## 5. Frontend Architecture
+
+`frontend/` — React 18 + TypeScript + Vite + Tailwind, Leaflet/OpenStreetMap map layer.
+
+- `src/pages/` — Explore (map + quick plan), Routes (compare profiles), Safety, Reports, Navigation (live HUD), Profile
+- `src/components/` — `MapView` (Leaflet rendering, route-color logic), `RouteCard`, `Sidebar`, `TopBar`, `MobileNav`
+- `src/context/RoutePlannerContext.tsx` — centralized route-planning state (origin/destination, active hazard, selected route)
+- `src/services/` — `routeService.ts` (backend routing calls), `safetyService.ts` (backend hazard-report calls), `locationService.ts` + `geocoding.ts` (real Nominatim geocoding), `mockData.ts` (presets/landmark shortcuts only — not used as a fallback for arbitrary input)
+- `src/types/api.ts` — shared request/response types
+
+## 6. Backend Architecture
+
+`src/backend/` — FastAPI.
+
+- `main.py` — app entrypoint, CORS, router registration
+- `routes.py` — `/routes/optimize`, `/routes/reroute`
+- `reports.py` — `/reports/` (GET/POST), `/reports/nearby` (PostGIS proximity query)
+- `auth.py`, `models.py`, `schemas.py`, `database.py` — user auth (JWT) and SQLAlchemy/PostGIS setup
+- `admin.py`, `notifications.py` — supporting endpoints
+
+## 7. AI / Routing Architecture
+
+- `src/graph/` — builds/caches the road network graph from OpenStreetMap (`graph_builder.py`, region config in `config.py`)
+- `src/routing/` — `astar.py` (pathfinding), `edge_weights.py` (per-profile cost functions), `route_ranker.py`, `rerouting.py` (dynamic reroute logic), `route_analytics.py` (distance/time/safety scoring), `frontend_export.py` (GeoJSON/polyline formatting)
+- `src/ai/` — `safety_score.py`, `flood_prediction.py`, `accident_prediction.py`, `congestion_prediction.py`, `explainable_ai.py`, `report_verification.py`
+- `src/ml/` — trained model artifacts (`*.pkl`) and training/evaluation scripts
+
+## 8. Route Optimization Profiles
+
+Defined in `src/routing/edge_weights.py`:
+
+| Profile | Cost function | 
+|---|---|
+| Fastest | `length × speed_factor(highway_type) × traffic × hazard` |
+| Safest | `length × safety_factor(highway_type) × safety × crime × flood` |
+| Balanced | `0.45 × fastest_cost + 0.55 × safest_cost` |
+
+It is expected and acceptable for two or three profiles to converge on the same physical path when that path is genuinely optimal under all three cost functions — the frontend does not force artificial divergence.
+
+**Route line colors** (fixed, applied in `frontend/src/components/MapView.tsx`):
+- Safest → **Blue** (`#2563eb`)
+- Fastest → **Red** (`#dc2626`)
+- Balanced → **Green** (`#16a34a`)
+
+The selected route is drawn thicker and at full opacity; non-selected routes are thinner and dimmed, but keep their profile color.
+
+## 9. Dynamic Rerouting
+
+`POST /routes/reroute` recomputes a path using `dynamic_weights` (a hazard-penalty multiplier consumed by `edge_weights.py`). This is real backend computation, not a frontend simulation.
+
+**Known limitation**: the `{hazard_type, penalty_factor}` payload shape applies its multiplier *globally* to every edge of that cost type, not to a specific geographic location — so it can return the same geometry with the flag `rerouted: true` if the global penalty doesn't change which path is shortest. A truly localized detour would require the backend to expose per-edge node IDs to the caller, which it currently does not. This is flagged in the UI when triggered ("Simulate Road Hazard"), rather than being papered over with a fake detour.
+
+## 10. Safety / Community Reporting
+
+`GET /reports/` and `POST /reports/` are real, PostGIS-backed endpoints (see Phase 7 / §17 below for the current local DB status). The Safety page shows a heuristic score derived from nearby open reports, and explicitly renders **"—" / "Not measured by backend"** for lighting/patrol/traffic/crowd metrics, since the backend has no data source for those — it does not invent numbers for them.
+
+## 11. Lost & Found
+
+Added as a report category (`frontend/src/pages/Reports.tsx`), with sub-types: **Valuables, Personal Items, Documents, Electronics, Other**. The backend's `report_type` field is free text (see `src/backend/report_schemas.py`), so this required no backend/schema change — the sub-type is folded into the submitted `report_type` (e.g. `"Lost & Found: Electronics"`) and correctly re-classified when reports are displayed back on the Safety page.
+
+## 12. Technology Stack
+
+**Backend:** Python 3.13, FastAPI, SQLAlchemy 2, GeoAlchemy2, psycopg2, PostgreSQL + PostGIS, NetworkX, OSMnx, scikit-learn, pandas/numpy, uvicorn, python-jose (JWT), passlib/bcrypt
+**Frontend:** React 18, TypeScript, Vite 6, Tailwind CSS, Leaflet, react-router-dom, lucide-react
+**Testing:** pytest (backend/routing)
+
+## 13. Folder Structure
 
 ```
 sih-2026-airakshak/
 ├── src/
-│   ├── backend/               # FastAPI backend & database layer
-│   │   ├── admin.py           # Admin management endpoints
-│   │   ├── auth.py            # JWT authentication & password hashing
-│   │   ├── database.py        # SQLAlchemy session & engine configuration
-│   │   ├── main.py            # FastAPI application entrypoint & routers
-│   │   ├── models.py          # SQLAlchemy / PostGIS database models
-│   │   ├── notifications.py   # User safety alerts & notifications
-│   │   ├── reports.py         # Community safety incident reporting
-│   │   ├── routes.py          # Route optimization & rerouting endpoints
-│   │   ├── route_service.py   # Bridge between backend and routing engine
-│   │   └── schemas.py         # Pydantic validation schemas
-│   │
-│   ├── routing/               # Graph algorithms & pathfinding engine
-│   │   ├── astar.py           # Optimized A* pathfinding algorithm
-│   │   ├── dijkstra.py        # Dijkstra algorithm implementation
-│   │   ├── edge_weights.py    # Dynamic AI weight modifier cost functions
-│   │   ├── frontend_export.py # GeoJSON RFC 7946 & Leaflet polyline exporter
-│   │   ├── rerouting.py       # Dynamic in-transit rerouting engine
-│   │   ├── route_analytics.py # Distance, travel time & safety analytics
-│   │   ├── route_ranker.py    # Multi-profile route ranking (Fastest/Safest/Balanced)
-│   │   └── routing_service.py # Lazy graph caching & unified routing API
-│   │
-│   ├── graph/                 # Graph management & region configurations
-│   │   ├── config.py          # 10 Region definitions & GraphML paths
-│   │   ├── graph_builder.py   # OSMnx auto-downloading & cache loader
-│   │   └── graph_validator.py # Road graph topology validation utilities
-│   │
-│   ├── ai/                    # Intelligence & scoring engine
-│   │   ├── accident_prediction.py
-│   │   ├── confidence_engine.py
-│   │   ├── congestion_prediction.py
-│   │   ├── demo_end_to_end.py
-│   │   ├── explainable_ai.py
-│   │   ├── flood_prediction.py
-│   │   ├── incident_prediction.py
-│   │   ├── report_verification.py
-│   │   ├── retraining.py
-│   │   └── safety_score.py
-│   │
-│   ├── ml/                    # Trained models & datasets
-│   │   ├── accident_model.pkl
-│   │   ├── congestion_model.pkl
-│   │   ├── flood_model.pkl
-│   │   ├── evaluation.py
-│   │   ├── predict.py
-│   │   ├── train.py
-│   │   └── datasets/          # Training datasets & generator
-│   │
-│   └── tests/                 # Comprehensive test suite (24 unit & integration tests)
-│       ├── test_astar.py
-│       ├── test_backend_integration.py
-│       ├── test_benchmarks.py
-│       ├── test_edge_weights.py
-│       ├── test_frontend_export.py
-│       ├── test_graph_builder.py
-│       ├── test_rerouting.py
-│       ├── test_route_analytics.py
-│       └── test_routing_service.py
-│
-├── frontend/                  # React + TypeScript + Vite + Tailwind CSS Frontend
-│   ├── src/
-│   │   ├── components/        # MapView, RoutePlanningPanel, LiveNavigationHUD, Modals
-│   │   ├── pages/             # HomePage, SafetyPage, ProfilePage
-│   │   ├── services/          # Real API client connecting to backend endpoints
-│   │   └── types/             # TypeScript type definitions for GeoJSON & routes
-│   ├── index.html             # Obsidian glassmorphism & Leaflet CSS entry
-│   └── package.json
-│
-├── data/
-│   └── graphs/                # Cached GraphML network files
-├── cache/                     # OSMnx request cache
-├── .env                       # Environment variables (DB URL, secret keys)
-├── .gitignore                 # Standard Git exclusion rules
-├── pytest.ini                 # Pytest pythonpath configuration
-├── requirements.txt           # Pinned production dependencies
-└── run.py                     # Unified CLI & server launcher
+│   ├── backend/     FastAPI app, routes, auth, DB models
+│   ├── ai/          ML-driven risk prediction & explainability
+│   ├── graph/        OSM graph build/cache/config
+│   ├── routing/      A*, edge weights, rerouting, analytics
+│   ├── ml/           trained models + training scripts
+│   └── tests/        pytest suite
+├── frontend/         React + TS + Vite + Tailwind (Google-Maps-style UI)
+├── data/graphs/       cached road network graphs (.graphml; regenerate via `python run.py graph`)
+├── requirements.txt
+├── pytest.ini
+├── run.py            unified CLI: backend / frontend / graph / demo
+├── .env.example       backend environment template
+└── README.md
 ```
 
----
+## 14. Requirements
 
-## ⚙️ Installation & Setup
+- Python 3.11+ (developed on 3.13)
+- Node.js 18+ and npm (a bundled copy exists at `.tools/node/` in this sandbox for convenience — not part of the shipped project; install Node normally elsewhere)
+- PostgreSQL 14+ with the **PostGIS** extension
 
-### Prerequisites
-- Python 3.10+ (Python 3.13 recommended)
-- Node.js 18+ & npm
-- PostgreSQL with PostGIS extension (optional for pure routing/AI demo mode)
+## 15. Environment Variables
 
-### Linux / macOS Setup
+Copy `.env.example` → `.env` at the repo root:
 
+```
+DATABASE_URL=postgresql://<user>:<password>@localhost:5432/raksha_path
+# CORS_ORIGINS=http://localhost:5173,http://localhost:3000   (optional; sensible defaults exist)
+```
+
+Frontend: copy `frontend/.env.example` → `frontend/.env`:
+
+```
+VITE_API_BASE_URL=http://localhost:8000
+```
+
+## 16. PostgreSQL / PostGIS Setup
+
+**Linux (Debian/Ubuntu):**
 ```bash
-# 1. Clone the repository
-git clone https://github.com/your-org/sih-2026-airakshak.git
-cd sih-2026-airakshak
+sudo apt-get update
+sudo apt-get install -y postgresql postgresql-contrib postgis
+sudo systemctl start postgresql
+sudo -u postgres psql -c "ALTER USER postgres PASSWORD 'your_password_here';"
+sudo -u postgres createdb raksha_path
+sudo -u postgres psql -d raksha_path -c "CREATE EXTENSION IF NOT EXISTS postgis;"
+```
+Then set `DATABASE_URL` in `.env` to match the password you chose.
 
-# 2. Create and activate virtual environment
-python3 -m venv venv
-source venv/bin/activate
-
-# 3. Install backend dependencies
-pip install -r requirements.txt
-
-# 4. Install frontend dependencies
-cd frontend && npm install && cd ..
+**Windows:** install PostgreSQL via the official installer (postgresql.org) or `choco install postgresql`, enable the PostGIS extension via **Stack Builder** (bundled with the installer), then in `psql`:
+```sql
+CREATE DATABASE raksha_path;
+\c raksha_path
+CREATE EXTENSION IF NOT EXISTS postgis;
 ```
 
-### Windows Setup
+**Verify the connection works** before starting the backend:
+```bash
+psql "postgresql://<user>:<password>@localhost:5432/raksha_path" -c "SELECT PostGIS_Version();"
+```
 
-```cmd
-:: 1. Clone repository and navigate
-git clone https://github.com/your-org/sih-2026-airakshak.git
-cd sih-2026-airakshak
+> The backend's `SQLAlchemy` engine (`src/backend/database.py`) reads `DATABASE_URL` from `.env` — there is no hidden fallback to a fake/mock data source. If PostgreSQL is unreachable, `/reports/` correctly returns a real `500` with the underlying exception; it does not silently return an empty or fabricated result.
 
-:: 2. Create and activate virtual environment
+## 17. Windows Setup
+
+```powershell
 python -m venv venv
 venv\Scripts\activate
-
-:: 3. Install backend dependencies
 pip install -r requirements.txt
-
-:: 4. Install frontend dependencies
-cd frontend && npm install && cd ..
-```
-
----
-
-## 🚦 Running the Project
-
-The unified `run.py` script provides a single entry point for all subsystems:
-
-### 1. Start the FastAPI Backend Server
-```bash
-# Development mode with hot-reload
+copy .env.example .env
 python run.py backend --reload
 ```
-* API Base: `http://localhost:8000`
-* Interactive Docs: `http://localhost:8000/docs`
-
-### 2. Start the React/Vite Frontend Application
-```bash
-python run.py frontend
+```powershell
+cd frontend
+copy .env.example .env
+npm install
+npm run dev
 ```
-* Web Application UI: `http://localhost:3000`
+All backend/routing/graph code uses `pathlib.Path`, so there are no hardcoded Linux-only paths.
 
-### 3. Run the Multi-Region Graph CLI
-```bash
-# Download and validate default region (Bhubaneswar)
-python run.py graph
-
-# Load and validate a specific North-East state
-PYTHONPATH=src python -m graph --region assam
-```
-
-### 4. Run the End-to-End AI Pipeline Demo
-```bash
-python run.py demo
-```
-
----
-
-## 🧪 Running Tests & Benchmarks
-
-Run the complete automated test suite (24 passing unit and integration tests):
+## 18. Linux Setup
 
 ```bash
-# Run all tests
-pytest -v
-
-# Run with benchmark comparisons (A* vs Dijkstra efficiency)
-pytest -v src/tests/test_benchmarks.py
+python3 -m venv venv
+source venv/bin/activate
+pip install -r requirements.txt
+cp .env.example .env
+python run.py backend --reload
+```
+```bash
+cd frontend
+cp .env.example .env
+npm install
+npm run dev
 ```
 
----
+## 19. Backend Startup
 
-## 📡 API Endpoints Reference
+```bash
+source venv/bin/activate
+python run.py backend --port 8000 --reload
+```
+Health check: `curl http://localhost:8000/` → `{"message": "Raksha-Path Backend is running!"}`
+DB check: `curl http://localhost:8000/test-db`
 
-| Method | Endpoint | Description |
-| :--- | :--- | :--- |
-| `POST` | `/routes/optimize` | Computes ranked routes (Fastest, Safest, Balanced) with GeoJSON & analytics |
-| `POST` | `/routes/reroute` | Evaluates dynamic hazards and computes an alternative path if threshold exceeded |
-| `POST` | `/auth/register` | Register a new user |
-| `POST` | `/auth/login` | Authenticate user and retrieve JWT bearer token |
-| `GET` | `/auth/me` | Retrieve profile of authenticated user |
-| `POST` | `/reports/` | Submit a new safety / hazard incident report |
-| `GET` | `/reports/` | List all reported safety incidents |
-| `GET` | `/reports/nearby` | Query spatial hazards within radius of GPS coordinates |
-| `GET` | `/admin/statistics` | Retrieve system-wide incident and resolution metrics |
+## 20. Frontend Startup
 
----
+```bash
+cd frontend
+npm install
+npm run dev
+```
+Opens on `http://localhost:5173`. `VITE_API_BASE_URL` in `frontend/.env` must point at the running backend.
 
-## 👥 Team Member Responsibilities
+## 21. Testing
 
-- **Member 1 (Frontend & Maps)**: React, Leaflet/OSM map rendering, GeoJSON visualization, turn-by-turn UI.
-- **Member 2 (Backend & Database)**: FastAPI REST API, PostgreSQL/PostGIS database, authentication, report schemas.
-- **Member 3 (Routing & Optimization)**: A* / Dijkstra engine, dynamic edge weights, in-transit rerouting, graph management, GeoJSON exporter.
-- **Member 4 (AI & Intelligence)**: Hazard forecasting (Flood, Congestion, Accident ML models), confidence reconciliation, incident verification.
+Backend/routing test suite (28 tests, covering A*, edge weights, rerouting, graph building, route analytics, backend integration, benchmarks):
+```bash
+source venv/bin/activate
+python -m pytest
+```
+Last run: **28 passed**.
 
----
+Frontend build/typecheck:
+```bash
+cd frontend
+npm run build
+```
+There is currently no automated frontend test suite (no `*.test.*`/`*.spec.*` files, no `test` script) — this is a genuine gap, not hidden.
 
-## 🔮 Future Scope
+## 22. Demo Procedure
 
-1. **Nationwide Graph Partitioning**: Hierarchical contraction hierarchies (CH) for sub-second pan-India routing.
-2. **Real-time IoT Telemetry**: Integration with municipal water level sensors and traffic cameras for automated edge weight penalties.
-3. **Offline Emergency Navigation**: Edge-compiled graph routing on mobile clients during network blackouts.
+1. Start PostgreSQL (§16), backend (§19), frontend (§20).
+2. Open `http://localhost:5173`.
+3. Type any real place name into Origin/Destination (e.g. *"Bhubaneswar Railway Station"* → *"KIIT University"*) — not just a preset.
+4. Click **Calculate**. Verify in DevTools → Network that a real `POST /routes/optimize` request fires and a 200 with real `analytics` returns.
+5. Confirm the route draws on the map with the correct colors (Safest=blue, Fastest=red, Balanced=green) and that switching profiles changes the request/response.
+6. Click **Simulate Road Hazard** and confirm a real `POST /routes/reroute` fires.
+7. Visit **Report Issue**, select **Lost & Found**, pick a sub-type, submit.
+8. Visit **Safety Intel** and confirm it reflects real backend data (or a truthful "not available" state if the DB is down).
+
+## 23. Known Limitations
+
+- **PostgreSQL/PostGIS is not provisioned in this development sandbox** (confirmed: no `postgresql` service installed, connection refused on 5432). This is an infrastructure gap, not a code bug — `/routes/optimize` degrades gracefully without it (community-hazard overlay disabled), but `/reports/` (GET and POST) correctly returns a real `500` until a database is provisioned per §16.
+- Only the `bhubaneswar` region has a cached road graph in `data/graphs/`; other regions listed in `src/graph/config.py` would trigger a live OSM download on first use (untested here).
+- Dynamic rerouting's hazard penalty is global, not geographically localized (see §9).
+- No automated frontend test suite exists yet.
+- `SECRET_KEY` for JWT auth (`src/backend/auth.py`) has a clearly-labeled insecure development default — set a real `SECRET_KEY` environment variable before any real deployment.
+- Only one frontend build has been visually/functionally verified end-to-end in this environment (Chromium via Playwright); it has not been tested in Firefox/Safari.
+
+## 24. Future Scope
+
+- Provision PostgreSQL/PostGIS in CI so the reports/safety path can be tested end-to-end automatically
+- Localized (per-edge) dynamic hazard penalties for genuinely geo-targeted rerouting
+- Additional region graphs pre-cached for the Northeast states already configured in `src/graph/config.py`
+- Frontend automated test suite (component + e2e)
+- Turn-by-turn live GPS tracking on the Navigation page (currently a static HUD layout)
+
+## 25. Team Member Responsibilities
+
+See in-code module ownership: `src/backend/` (API/auth), `src/routing/` + `src/graph/` (routing & optimization), `src/ai/` + `src/ml/` (risk prediction), `frontend/` (UI/UX).

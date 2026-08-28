@@ -4,6 +4,19 @@ import type { Coordinate, HazardAlert, RouteOption } from "../types/api";
 
 const DEFAULT_CENTER: [number, number] = [20.2961, 85.8245];
 
+// Fixed profile → color mapping. Do not swap these meanings.
+export const PROFILE_COLORS: Record<string, string> = {
+  safest: "#2563eb",   // blue
+  fastest: "#dc2626",  // red
+  balanced: "#16a34a"  // green
+};
+const DEFAULT_ROUTE_COLOR = "#64748b"; // fallback for an unrecognized profile
+
+export function colorForRoute(route: { id: string; preferenceType?: string }): string {
+  const key = (route.preferenceType || route.id.replace(/^route-/, "").replace(/-rerouted$/, "")).toLowerCase();
+  return PROFILE_COLORS[key] || DEFAULT_ROUTE_COLOR;
+}
+
 interface MapViewProps {
   routes?: RouteOption[];
   selectedId?: string | null;
@@ -84,11 +97,12 @@ export function MapView({
 
       const isSelected = route.id === selectedId;
       const polylineCoords: [number, number][] = route.geometry.map(p => [p.lat, p.lng]);
+      const routeColor = colorForRoute(route);
 
       const polyline = L.polyline(polylineCoords, {
-        color: isSelected ? "#2563eb" : "#94a3b8",
+        color: routeColor,
         weight: isSelected ? 6 : 4,
-        opacity: isSelected ? 1.0 : 0.6,
+        opacity: isSelected ? 1.0 : 0.45,
         lineCap: "round",
         lineJoin: "round"
       }).addTo(layers);

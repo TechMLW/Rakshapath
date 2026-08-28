@@ -37,7 +37,7 @@ export interface RouteOption {
 
 export interface HazardAlert {
   id: string;
-  type: "Road Block" | "Waterlogging" | "Low Lighting" | "Accident" | "Unsafe Zone" | "Construction";
+  type: "Road Block" | "Waterlogging" | "Low Lighting" | "Accident" | "Unsafe Zone" | "Construction" | "Lost & Found";
   severity: "Low" | "Moderate" | "High" | "Critical";
   location: Coordinate;
   locationName: string;

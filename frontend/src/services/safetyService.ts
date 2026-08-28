@@ -51,9 +51,13 @@ function toHazardAlert(r: BackendReport): HazardAlert {
     "road block": "Road Block", blockage: "Road Block", lighting: "Low Lighting",
     crime: "Unsafe Zone", construction: "Construction"
   };
+  const normalizedType = r.report_type?.toLowerCase() || "";
+  const resolvedType: HazardAlert["type"] = normalizedType.startsWith("lost & found")
+    ? "Lost & Found"
+    : typeMap[normalizedType] || "Road Block";
   return {
     id: String(r.id),
-    type: typeMap[r.report_type?.toLowerCase()] || "Road Block",
+    type: resolvedType,
     severity: severityMap[r.severity?.toLowerCase()] || "Moderate",
     location: { lat: r.latitude, lng: r.longitude },
     locationName: `Reported location (${r.latitude.toFixed(4)}, ${r.longitude.toFixed(4)})`,

@@ -1,9 +1,0 @@
-import { GlassCard } from "../components/GlassCard";
-
-export default function Profile(){
- return <main className="page-shell"><div className="mx-auto max-w-5xl"><div className="eyebrow">ACCOUNT</div><h1 className="page-title">Profile & settings</h1>
- <GlassCard className="flex flex-wrap items-center gap-4 p-5"><div className="avatar h-14 w-14 text-base">PS</div><div><h2 className="font-semibold">Palash Dave</h2><div className="mt-1 text-[10px] text-rp-green">Guardian Badge</div><div className="mt-1 text-[10px] text-rp-outline">Member profile</div></div><button className="secondary-button ml-auto">Edit profile</button></GlassCard>
- <div className="mt-4 grid gap-4 md:grid-cols-2"><GlassCard className="p-5"><div className="eyebrow">SAFETY SETTINGS</div><Setting title="Context-aware routing" text="Use selected travel priority in backend route requests."/><Setting title="Night travel mode" text="UI preference only until backend integration is available." on/></GlassCard><GlassCard className="p-5"><div className="eyebrow">EMERGENCY CONTACTS</div><div className="contact-row"><div className="avatar">M</div><div><b>Mom</b><span>Primary trusted contact</span></div></div><div className="contact-row"><div className="avatar">R</div><div><b>Rahul</b><span>Trusted contact</span></div></div><button className="secondary-button mt-3 w-full">+ Add contact</button></GlassCard></div>
- </div></main>
-}
-function Setting({title,text,on=false}:{title:string;text:string;on?:boolean}){return <div className="flex items-center gap-3 border-b border-white/[.06] py-4 last:border-0"><div className={`toggle ${on?"toggle-on":""}`}><span/></div><div><b className="text-xs">{title}</b><p className="mt-1 text-[10px] text-rp-outline">{text}</p></div></div>}

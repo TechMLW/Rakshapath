@@ -11,14 +11,18 @@ const INCIDENT_TYPES = [
   "Flooding",
   "Outage",
   "Suspicious Activity",
+  "Lost & Found",
   "Other"
 ];
+
+const LOST_FOUND_SUBTYPES = ["Valuables", "Personal Items", "Documents", "Electronics", "Other"];
 
 const SEVERITIES = ["Low", "Moderate", "High", "Critical"];
 
 export default function Reports() {
   const [location, setLocation] = useState("Janpath, Saheed Nagar");
   const [type, setType] = useState("Hazard");
+  const [lostFoundSubtype, setLostFoundSubtype] = useState(LOST_FOUND_SUBTYPES[0]);
   const [description, setDescription] = useState("");
   const [severity, setSeverity] = useState("Moderate");
   const [file, setFile] = useState<File | null>(null);
@@ -37,10 +41,12 @@ export default function Reports() {
     setState("loading");
     setError("");
 
+    const reportType = type === "Lost & Found" ? `Lost & Found: ${lostFoundSubtype}` : type;
+
     try {
       const res = (await submitIncident({
         location,
-        type,
+        type: reportType,
         description,
         severity,
         photo: file || undefined
@@ -125,6 +131,24 @@ export default function Reports() {
                     </button>
                   ))}
                 </div>
+
+                {type === "Lost & Found" && (
+                  <div className="mt-3">
+                    <label className="label">Lost & Found Type</label>
+                    <div className="flex flex-wrap gap-2">
+                      {LOST_FOUND_SUBTYPES.map(sub => (
+                        <button
+                          type="button"
+                          key={sub}
+                          onClick={() => setLostFoundSubtype(sub)}
+                          className={`chip ${lostFoundSubtype === sub ? "chip-active" : ""}`}
+                        >
+                          {sub}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               {/* Description */}

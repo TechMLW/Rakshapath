@@ -49,18 +49,17 @@ export default function Profile() {
         {/* Header */}
         <div className="flex items-center gap-2">
           <span className="eyebrow">SAFETY ACCOUNT</span>
-          <span className="demo-pill">TEST PROFILE</span>
         </div>
         <h1 className="page-title">Safety profile & preferences</h1>
 
         {/* User Card */}
         <GlassCard className="mt-6 flex flex-wrap items-center gap-4 p-6">
           <div className="avatar h-16 w-16 text-lg bg-blue-100 text-blue-700 font-black shadow-inner">
-            PS
+            SA
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <h2 className="text-xl font-extrabold text-slate-900">Priya Sharma</h2>
+              <h2 className="text-xl font-extrabold text-slate-900">Saumya Anand</h2>
               <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-xs font-bold text-emerald-800 flex items-center gap-1">
                 <ShieldCheck size={14} />
                 Guardian Level 3

@@ -47,9 +47,9 @@ export function Sidebar({ onSOS }: { onSOS: () => void }) {
           to="/profile"
           className="mt-5 flex items-center gap-3 border-t border-slate-100 pt-4 text-inherit no-underline hover:opacity-90"
         >
-          <div className="avatar bg-blue-100 text-blue-800">PS</div>
+          <div className="avatar bg-blue-100 text-blue-800">SA</div>
           <div className="min-w-0 flex-1">
-            <div className="text-xs font-bold text-slate-800 truncate">Priya Sharma</div>
+            <div className="text-xs font-bold text-slate-800 truncate">Saumya Anand</div>
             <div className="flex items-center gap-1.5 text-[10px] text-emerald-700 font-medium">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
               Guardian Active
