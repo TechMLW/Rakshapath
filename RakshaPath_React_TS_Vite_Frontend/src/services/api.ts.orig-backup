@@ -1,0 +1,80 @@
+import type { IncidentReportInput, RoutePreference, RouteResponse, SafetyData } from "../types/api";
+
+const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL ?? "").replace(/\/$/, "");
+
+export const apiConfigured = Boolean(API_BASE_URL);
+
+async function request<T>(path: string, init?: RequestInit): Promise<T> {
+  if (!API_BASE_URL) {
+    throw new Error("BACKEND_NOT_CONFIGURED");
+  }
+  const controller = new AbortController();
+  const timeout = window.setTimeout(() => controller.abort(), 15000);
+
+  try {
+    const response = await fetch(`${API_BASE_URL}${path}`, {
+      ...init,
+      signal: controller.signal,
+      headers: {
+        "Content-Type": "application/json",
+        ...(init?.headers ?? {})
+      }
+    });
+    if (!response.ok) {
+      throw new Error(`BACKEND_${response.status}`);
+    }
+    return (await response.json()) as T;
+  } finally {
+    window.clearTimeout(timeout);
+  }
+}
+
+/*
+ * IMPORTANT:
+ * The actual backend project was not included in the supplied files.
+ * Therefore these paths are intentionally isolated here and are NOT claimed
+ * to match your backend. Replace them only after inspecting the real backend.
+ */
+export async function calculateRoutes(payload: {
+  origin: string;
+  destination: string;
+  preference: RoutePreference;
+}): Promise<RouteResponse> {
+  return request<RouteResponse>("/api/routes", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function reroute(payload: {
+  routeId: string;
+  origin: { lat: number; lng: number };
+  destination: string;
+  preference: RoutePreference;
+}): Promise<RouteResponse> {
+  return request<RouteResponse>("/api/routes/reroute", {
+    method: "POST",
+    body: JSON.stringify(payload)
+  });
+}
+
+export async function getSafety(params: { lat: number; lng: number }): Promise<SafetyData> {
+  return request<SafetyData>(`/api/safety?lat=${params.lat}&lng=${params.lng}`);
+}
+
+export async function submitIncident(report: IncidentReportInput): Promise<unknown> {
+  const form = new FormData();
+  form.append("location", report.location);
+  form.append("type", report.type);
+  form.append("description", report.description);
+  form.append("severity", report.severity);
+  if (report.photo) form.append("photo", report.photo);
+
+  if (!API_BASE_URL) throw new Error("BACKEND_NOT_CONFIGURED");
+  const response = await fetch(`${API_BASE_URL}/api/incidents`, {
+    method: "POST",
+    body: form
+  });
+  if (!response.ok) throw new Error(`BACKEND_${response.status}`);
+  return response.json();
+}

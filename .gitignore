@@ -1,0 +1,46 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables
+.env
+
+# Testing & Coverage
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Caches & temporary files
+cache/
+*.db
+*.sqlite3
+.DS_Store
+.directory
+
+# Graph downloads
+data/graphs/*.graphml
+!data/graphs/.gitkeep
+
+# Frontend build artifacts / dependencies
+node_modules/
+dist/
+*.local
+
+# Local Node toolchain (bundled, not part of source)
+.tools/
+
+# Archives / stray downloads (not project source)
+*.zip
+
+# Stray duplicate graph export at repo root (regenerate via `python run.py graph`)
+/bhubaneswar
+
+# Editor/OS
+.vscode/
+.idea/
